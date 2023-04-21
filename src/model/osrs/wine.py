@@ -137,7 +137,7 @@ class OSRSWine(OSRSBot):
         # 1 is towards bank -1 is away from bank
         walking_tiles = [WalkTiles.GUILD, WalkTiles.NEAR_GUILD, WalkTiles.NEAR_BANK, WalkTiles.GUILD]
         for tile_color in walking_tiles[::direction]:
-            self.attempt_to_click('Walking', 'Walk', clr.OFF_WHITE, tile_color, 7)
+            self.attempt_to_click(f'walking looking for {tile_color.name}', 'Walk', clr.OFF_WHITE, tile_color.value, 7)
 
 
     def guild_door(self):
