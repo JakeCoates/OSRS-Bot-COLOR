@@ -42,6 +42,7 @@ def isolate_colors(image: cv2.Mat, colors: Union[Color, List[Color]]) -> cv2.Mat
 BLACK = Color([0, 0, 0])
 BLUE = Color([0, 0, 255])
 CYAN = Color([0, 255, 255])
+MUDDY = Color([158, 156, 61])
 GREEN = Color([0, 255, 0])
 ORANGE = Color([255, 144, 64])
 PINK = Color([255, 0, 231])
