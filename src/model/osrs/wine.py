@@ -113,6 +113,10 @@ class OSRSWine(OSRSBot):
         self.merge_grapes_with_jug()
         time.sleep(2)
 
+    def random_sleep_length(self, delay_min=0, delay_max=0):
+        """Returns a random float between min and max"""
+        return rd.fancy_normal_sample(delay_min, delay_max)
+    
     def attempt_to_click(self, text, contains_word, contains_color, marker_color, end_time=7, offset=(0,0)):
         start_time = time.time()
         while time.time() - start_time < end_time:
@@ -129,22 +133,42 @@ class OSRSWine(OSRSBot):
             if not self.mouseover_text(contains=contains_word, color=contains_color):
                 self.log_msg(f'failed to find {text}...')
                 continue
-            self.log_msg("{text} Clicked")
+            self.log_msg(f'{text} Clicked')
             self.mouse.click()
             time.sleep(2)
             break
 
+    def attempt_to_walk(self, text, contains_word, contains_color, marker_color, end_time=7, offset=(0,0)):
+        start_time = time.time()
+        while time.time() - start_time < end_time:
+
+            self.log_msg(f'Searching for {text}...')
+            # If our mouse isn't hovering over the object, and we can't find another object...
+            if not self.__move_mouse_to_nearest_marker(marker_color, offset):
+                time.sleep(1)
+                self.log_msg(f'failed to find {text}...')
+                continue
+
+            time.sleep(0.05)
+            # Click if the mouseover text assures us we're clicking the object
+            if not self.mouseover_text(contains=contains_word, color=contains_color):
+                self.log_msg(f'failed to find {text}...')
+                continue
+            self.log_msg(f'{text} Clicked')
+            self.mouse.click()
+            time.sleep(2)
+            break
     def bank_walk(self, direction):
         # 1 is towards bank -1 is away from bank
-        walking_tiles = [WalkTiles.GUILD, WalkTiles.NEAR_GUILD, WalkTiles.NEAR_BANK, WalkTiles.GUILD]
+        walking_tiles = [WalkTiles.GUILD, WalkTiles.NEAR_GUILD, WalkTiles.NEAR_BANK, WalkTiles.BANK]
         for tile_color in walking_tiles[::direction]:
-            self.attempt_to_click('Walking', 'Walk', clr.OFF_WHITE, tile_color, 7)
+            self.attempt_to_walk(f'{tile_color.name}', 'Walk', clr.OFF_WHITE, tile_color.value, 7)
             time.sleep(6)
 
 
     def guild_door(self):
         self.attempt_to_click('door', 'Open', clr.OFF_WHITE, clr.PURPLE, 7)
-        time.sleep(2)
+        time.sleep(4)
 
     def choose_bank(self):
         """
@@ -159,7 +183,7 @@ class OSRSWine(OSRSBot):
                 return banks[0]
             if (len(banks) > 1):
                 return banks[0] if rd.random_chance(.74) else banks[1]
-        else:
+
             self.log_msg("No banks found, trying to adjust camera...")
             if not self.adjust_camera(clr.YELLOW):
                 self.log_msg("No banks found, quitting bot...")
@@ -198,7 +222,7 @@ class OSRSWine(OSRSBot):
             True if bank is open, False if not
         Args:
             None"""
-        Desposit_all_img = imsearch.BOT_IMAGES.joinpath("bank_all.png")
+        Desposit_all_img = imsearch.BOT_IMAGES.joinpath("bank/bank_all.png")
         end_time = time.time() + 3
 
         while (time.time() < end_time):
@@ -236,7 +260,7 @@ class OSRSWine(OSRSBot):
     def bank_use(self):
         self.open_bank()
         time.sleep(1)
-        self.deposit_items(self.api_m.get_inv_item_first_indice([ids.JUG_OF_WINE, ids.JUG_OF_BAD_WINE, ids.JUG_OF_BAD_WINE_1992, ids.GRAPES]))
+        self.deposit_items(self.api_m.get_inv_item_indices([ids.JUG_OF_WINE, ids.JUG_OF_BAD_WINE, ids.JUG_OF_BAD_WINE_1992, ids.GRAPES]))
         time.sleep(1)
         pag.hotkey('esc')
         time.sleep(1)
