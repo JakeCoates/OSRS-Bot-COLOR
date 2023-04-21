@@ -10,6 +10,7 @@ from model.runelite_bot import BotStatus
 from utilities.api.morg_http_client import MorgHTTPSocket
 from utilities.api.status_socket import StatusSocket
 from utilities.geometry import Point, RuneLiteObject
+import utilities.imagesearch as imsearch
 
 class WalkTiles(Enum):
     BANK = clr.PINK
@@ -137,11 +138,13 @@ class OSRSWine(OSRSBot):
         # 1 is towards bank -1 is away from bank
         walking_tiles = [WalkTiles.GUILD, WalkTiles.NEAR_GUILD, WalkTiles.NEAR_BANK, WalkTiles.GUILD]
         for tile_color in walking_tiles[::direction]:
-            self.attempt_to_click(f'walking looking for {tile_color.name}', 'Walk', clr.OFF_WHITE, tile_color.value, 7)
+            self.attempt_to_click('Walking', 'Walk', clr.OFF_WHITE, tile_color, 7)
+            time.sleep(6)
 
 
     def guild_door(self):
         self.attempt_to_click('door', 'Open', clr.OFF_WHITE, clr.PURPLE, 7)
+        time.sleep(2)
 
     def choose_bank(self):
         """
@@ -189,6 +192,21 @@ class OSRSWine(OSRSBot):
             time.sleep(self.random_sleep_length(.8, 1.3))
         return
     
+    def is_bank_open(self):
+        """Makes sure bank is open, if not, opens it
+        Returns:
+            True if bank is open, False if not
+        Args:
+            None"""
+        Desposit_all_img = imsearch.BOT_IMAGES.joinpath("bank_all.png")
+        end_time = time.time() + 3
+
+        while (time.time() < end_time):
+            if deposit_btn := imsearch.search_img_in_rect(Desposit_all_img, self.win.game_view):
+                return True
+            time.sleep(.1)
+        return False    
+    
     def deposit_items(self, slot_list):
         """
         Clicks once on each unique item. 
@@ -218,7 +236,7 @@ class OSRSWine(OSRSBot):
     def bank_use(self):
         self.open_bank()
         time.sleep(1)
-        self.deposit_items(self.api_m.get_inv_item_first_indice([ids.JUG_OF_WINE, ids.JUG_OF_BAD_WINE, ids.JUG_OF_BAD_WINE_1992]))
+        self.deposit_items(self.api_m.get_inv_item_first_indice([ids.JUG_OF_WINE, ids.JUG_OF_BAD_WINE, ids.JUG_OF_BAD_WINE_1992, ids.GRAPES]))
         time.sleep(1)
         pag.hotkey('esc')
         time.sleep(1)
