@@ -193,7 +193,7 @@ class OSRSWine(OSRSBot):
             break
 
     def hop_world(self):
-        pag.hotkey('39\:192')
+        pag.hotkey('ctrlleft', 'shift', 'right')
         time.sleep(1)
         
         pag.hotkey('space')
