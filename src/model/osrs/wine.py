@@ -1,5 +1,5 @@
-import enum
 import time
+from enum import Enum
 
 import pyautogui as pag
 import utilities.api.item_ids as ids
@@ -11,7 +11,7 @@ from utilities.api.morg_http_client import MorgHTTPSocket
 from utilities.api.status_socket import StatusSocket
 from utilities.geometry import Point, RuneLiteObject
 
-class WalkTiles(enum):
+class WalkTiles(Enum):
     BANK = clr.PINK
     NEAR_BANK = clr.GREEN
     NEAR_GUILD = clr.BLUE
