@@ -140,7 +140,7 @@ class PandaWine(PandasBaseBot):
     def bank_use(self):
         self.open_bank()
         time.sleep(1)
-        self.deposit_items(self.api_m.get_inv_item_indices([ids.JUG_OF_WINE, ids.JUG_OF_BAD_WINE, ids.JUG_OF_BAD_WINE_1992, ids.GRAPES]))
+        self.deposit_items(self.api_m.get_inv_item_first_indice([ids.JUG_OF_WINE, ids.JUG_OF_BAD_WINE, ids.JUG_OF_BAD_WINE_1992, ids.GRAPES]))
         time.sleep(1)
         pag.hotkey('esc')
         time.sleep(1)
@@ -177,7 +177,8 @@ class PandaWine(PandasBaseBot):
 
 
     def top_stairs_down(self):
-        self.attempt_to_click('top stairs', 'Climb', clr.OFF_WHITE, clr.CYAN, 7)
+        while self.api_m.get_player_position()[2] == 2:
+            self.attempt_to_click('top stairs', 'Climb', clr.OFF_WHITE, clr.CYAN, 7)
 
     def middle_stairs_action(self, action=1):
         # 1 = up
