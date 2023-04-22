@@ -1,5 +1,5 @@
 from abc import ABCMeta
-from typing import Union, List
+from typing import Tuple, Union, List
 from pathlib import Path
 import random
 import threading
@@ -18,11 +18,16 @@ from utilities.api.status_socket import StatusSocket
 from utilities.geometry import Point, RuneLiteObject
 import utilities.imagesearch as imsearch
 
+class TileDetails():
+    def __init__(self, color, world_pos):
+        self.Color: clr.Color = color
+        self.WorldPos: Tuple[int, int, int] = world_pos
+
 class WalkTiles(Enum):
-    BANK = clr.PINK
-    NEAR_BANK = clr.GREEN
-    NEAR_GUILD = clr.BLUE
-    GUILD = clr.CYAN
+    BANK = TileDetails(clr.PINK, [3183, 3448, 0])
+    NEAR_BANK = TileDetails(clr.GREEN, [3170, 3452, 0])
+    NEAR_GUILD = TileDetails(clr.BLUE, [3156, 3449, 0])
+    GUILD = TileDetails(clr.CYAN, [3145, 3442, 0])
 
 
 class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
@@ -307,13 +312,13 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
             time.sleep(2)
             break
 
-    def attempt_to_walk(self, text, contains_word, contains_color, marker_color, end_time=7, offset=(0,0)):
+    def attempt_to_walk(self, text, contains_word, contains_color, tile: TileDetails, end_time=7, offset=(0,0)):
         start_time = time.time()
         while time.time() - start_time < end_time:
 
             self.log_msg(f'Searching for {text}...')
             # If our mouse isn't hovering over the object, and we can't find another object...
-            if not self.__move_mouse_to_nearest_marker(marker_color, offset):
+            if not self.__move_mouse_to_nearest_marker(tile.Color, offset):
                 time.sleep(1)
                 self.log_msg(f'failed to find {text}...')
                 continue
@@ -325,8 +330,13 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
                 continue
             self.log_msg(f'{text} Clicked')
             self.mouse.click()
-            time.sleep(2)
-            break
+            time.sleep(1)
+            player_pos = self.api_m.get_player_position()
+            if player_pos[0] - tile.WorldPos[0] < 3 and player_pos[0] - tile.WorldPos[0] > -3:
+            # Within +-3 of x
+                if player_pos[1] - tile.WorldPos[1] < 3 and player_pos[1] - tile.WorldPos[1] > -3:
+                # Within +-3 of y
+                    break
 
     def choose_bank(self):
         """

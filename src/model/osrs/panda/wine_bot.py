@@ -2,7 +2,7 @@ import time
 from enum import Enum
 
 import pyautogui as pag
-from model.osrs.panda.bot_base import PandasBaseBot
+from model.osrs.panda.bot_base import PandasBaseBot, WalkTiles
 import utilities.api.item_ids as ids
 import utilities.color as clr
 import utilities.random_util as rd
@@ -12,13 +12,6 @@ from utilities.api.morg_http_client import MorgHTTPSocket
 from utilities.api.status_socket import StatusSocket
 from utilities.geometry import Point, RuneLiteObject
 import utilities.imagesearch as imsearch
-
-class WalkTiles(Enum):
-    BANK = clr.PINK
-    NEAR_BANK = clr.GREEN
-    NEAR_GUILD = clr.BLUE
-    GUILD = clr.CYAN
-
 
 class PandaWine(PandasBaseBot):
     def __init__(self):
@@ -94,7 +87,7 @@ class PandaWine(PandasBaseBot):
                 self.bank_walk(-1)
                 self.guild_door()
 
-            self.get_upstairs()
+                self.get_upstairs()
 
         self.update_progress(1)
         self.__logout("Finished.")
@@ -135,7 +128,9 @@ class PandaWine(PandasBaseBot):
         walking_tiles = [WalkTiles.GUILD, WalkTiles.NEAR_GUILD, WalkTiles.NEAR_BANK, WalkTiles.BANK]
         for tile_color in walking_tiles[::direction]:
             self.attempt_to_walk(f'{tile_color.name}', 'Walk', clr.OFF_WHITE, tile_color.value, 7)
-            time.sleep(6)
+        while not self.api_m.get_is_player_idle():
+            self.log_msg("waiting for idle.")
+            time.sleep(0.4)
 
 
     def guild_door(self):
