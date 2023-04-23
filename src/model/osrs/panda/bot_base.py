@@ -505,7 +505,21 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
             self.mouse.click()
 
         return
+    
+    def is_hopping_worlds(self):
+        """Makes sure we're currently hopping worlds
+        Returns:
+            True if hopping worlds, False if not
+        Args:
+            None"""
+        please_wait_img = self.PANDAS_IMAGES.joinpath("please_wait.png")
+        end_time = time.time() + 3
 
+        while (time.time() < end_time):
+            if please_wait := imsearch.search_img_in_rect(please_wait_img, self.win.mouseover):
+                return True
+            time.sleep(.1)
+        return False   
 
     def close_bank(self):
         """Exits bank by sending escape key"""
@@ -618,13 +632,19 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
     def hop_world(self):
         if not self.api_m.get_is_inv_full():
             pag.hotkey('ctrlleft', 'shift', 'right')
-            time.sleep(1)
+            time.sleep(self.random_sleep_length(1.5,3))
             
             pag.hotkey('space')
-            time.sleep(0.5)
+            time.sleep(self.random_sleep_length(1.5,3))
             pag.hotkey('2')
 
-            time.sleep(7)
+            wait_time = time.time()
+            while self.is_hopping_worlds():
+                # if we waited for 10 seconds, break out of loop
+                if time.time() - wait_time > 20:
+                    break
+                time.sleep(self.random_sleep_length(.8, 1.3))
+                
             self.log_msg("Selecting inventory...")
             self.mouse.move_to(self.win.cp_tabs[3].random_point())
             self.mouse.click()
