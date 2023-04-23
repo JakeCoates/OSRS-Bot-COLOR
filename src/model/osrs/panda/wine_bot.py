@@ -111,12 +111,10 @@ class PandaWine(PandasBaseBot):
                 self.update_progress((time.time() - self.start_time) / self.end_time)
                 self.last_progress = round(self.progress, 2)
 
-            progress = self.wine_made / self.wine_count
-            self.update_progress(progress)
-            if progress > 1:
-                break
-
-        self.__logout("Finished.")
+        self.update_progress(1)
+        self.log_msg("Finished.")
+        self.logout()
+        self.stop()
     
     def jug_action(self):
         if self.jug_last:
