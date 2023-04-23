@@ -162,41 +162,82 @@ class PandaWine(PandasBaseBot):
 
         
     def fill_jugs_with_water(self):
-        start_time = time.time()
-        end_time = 7
-        while time.time() - start_time < end_time:
+        attempts = 0
+        wait_to_finish = False
+        while not len(self.api_m.get_inv_item_indices(ids.JUG)) == 0:
+            attempts += 1
+
             indices_jug = self.api_m.get_inv_item_indices(ids.JUG)
             self.mouse.move_to(self.win.inventory_slots[indices_jug[0]].random_point())
             self.mouse.click()
             time.sleep(2)
 
-            self.attempt_to_click('click sink', 'Sink', clr.OFF_CYAN, clr.RED, 7)
+            if self.attempt_to_click('click sink', 'Sink', clr.OFF_CYAN, clr.RED, 7):
+                pag.hotkey('space')
+                wait_to_finish = True
+                break
+            if attempts >= 5:
+                break
+        
+        max_seconds_to_wait = 0
+        while wait_to_finish and not len(self.api_m.get_inv_item_indices(ids.JUG)) == 0:
+            max_seconds_to_wait += 1
+            time.sleep(1)
+            if max_seconds_to_wait > 30:
+                break
 
-            pag.hotkey('space')
-            time.sleep(17)
 
 
     def top_stairs_down(self):
+        attempts = 0
         while self.api_m.get_player_position()[2] == 2:
+            attempts += 1
             self.attempt_to_click('top stairs', 'Climb', clr.OFF_WHITE, clr.CYAN, 7)
+            if attempts >= 5:
+                break
+
 
     def middle_stairs_action(self, action=1):
         # 1 = up
         # 2 = down
-        self.attempt_to_click('middle stairs', 'Climb', clr.OFF_WHITE, clr.BLUE, 7)
-        time.sleep(2)
-        pag.hotkey(f'{action}')
-        time.sleep(2)
+        attempts = 0
+        while self.api_m.get_player_position()[1] == 2:
+            attempts += 1
+            self.attempt_to_click('middle stairs', 'Climb', clr.OFF_WHITE, clr.BLUE, 7)
+            time.sleep(2)
+            pag.hotkey(f'{action}')
+            time.sleep(2)
+            if attempts >= 5:
+                break
 
     def bottom_stairs_up(self):
-        self.attempt_to_click('bottom stairs', 'Climb', clr.OFF_WHITE, clr.YELLOW, 7)
+        attempts = 0
+        while self.api_m.get_player_position()[0] == 2:
+            attempts += 1
+            self.attempt_to_click('bottom stairs', 'Climb', clr.OFF_WHITE, clr.YELLOW, 7)
+            if attempts >= 5:
+                break
 
     def jug_loop(self): 
         if self.api_m.get_is_inv_full():
             return
-        self.attempt_to_click('Jug', 'Jug', clr.OFF_ORANGE, clr.PURPLE, 7, (25, 0))
+        item_start_count = len(self.api_m.get_inv_item_indices(ids.EMPTY_JUG))
+        attempts = 0
+        
+        while len(self.api_m.get_inv_item_indices(ids.EMPTY_JUG)) == item_start_count:
+            attempts += 1
+            self.attempt_to_click('Jug', 'Jug', clr.OFF_ORANGE, clr.PURPLE, 7, (25, 0))
+            if attempts >= 5:
+                break
 
     def grape_loop(self): 
         if self.api_m.get_is_inv_full():
             return
-        self.attempt_to_click('Grapes', 'Grapes', clr.OFF_ORANGE, clr.PINK, 7, (0, -25))
+        item_start_count = len(self.api_m.get_inv_item_indices(ids.GRAPES))
+        attempts = 0
+        
+        while len(self.api_m.get_inv_item_indices(ids.GRAPES)) == item_start_count:
+            attempts += 1
+            self.attempt_to_click('Grapes', 'Grapes', clr.OFF_ORANGE, clr.PINK, 7, (0, -25))
+            if attempts >= 5:
+                break

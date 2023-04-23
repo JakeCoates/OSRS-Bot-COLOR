@@ -291,10 +291,9 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
             else:
                 self.take_break()
 
-    def attempt_to_click(self, text, contains_word, contains_color, marker_color, end_time=7, offset=(0,0)):
+    def attempt_to_click(self, text, contains_word, contains_color, marker_color, end_time=7, offset=(0,0)) -> bool:
         start_time = time.time()
         while time.time() - start_time < end_time:
-
             self.log_msg(f'Searching for {text}...')
             # If our mouse isn't hovering over the object, and we can't find another object...
             if not self.mouseover_text(contains=contains_word, color=contains_color) and not self.__move_mouse_to_nearest_marker(marker_color, offset):
@@ -310,7 +309,9 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
             self.log_msg(f'{text} Clicked')
             self.mouse.click()
             time.sleep(2)
-            break
+            # return true as it managed to click
+            return True
+        return False
 
     def attempt_to_walk(self, text, contains_word, contains_color, tile: TileDetails, end_time=7, offset=(0,0)):
         start_time = time.time()
@@ -336,7 +337,8 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
             # Within +-3 of x
                 if player_pos[1] - tile.WorldPos[1] < 3 and player_pos[1] - tile.WorldPos[1] > -3:
                 # Within +-3 of y
-                    break
+                    return True
+        return False
 
     def choose_bank(self):
         """
