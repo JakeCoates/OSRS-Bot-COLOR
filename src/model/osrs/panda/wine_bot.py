@@ -125,6 +125,7 @@ class PandaWine(PandasBaseBot):
 
                 self.get_upstairs()
 
+            self.update_progress(self.wine_made / self.wine_count)
         self.update_progress(1)
         self.__logout("Finished.")
 
