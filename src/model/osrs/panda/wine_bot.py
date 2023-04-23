@@ -146,19 +146,24 @@ class PandaWine(PandasBaseBot):
         time.sleep(1)
         
     def merge_grapes_with_jug(self):
-        start_time = time.time()
-        end_time = 7
-        while time.time() - start_time < end_time:
-            indices_jug = self.get_inv_items(ids.JUG_OF_WATER)
-            indices_grape = self.get_inv_items(ids.GRAPES)
-            self.mouse.move_to(self.win.inventory_slots[indices_jug[0]].random_point())
-            self.mouse.click()
-            time.sleep(2)
-            self.mouse.move_to(self.win.inventory_slots[indices_grape[0]].random_point())
-            self.mouse.click()
-            time.sleep(2)
-            pag.hotkey('space')
-            time.sleep(15)
+        wait_to_finish = True
+        indices_jug = self.get_inv_items(ids.JUG_OF_WATER)
+        indices_grape = self.get_inv_items(ids.GRAPES)
+
+        self.mouse.move_to(self.win.inventory_slots[indices_jug[0]].random_point())
+        self.mouse.click()
+        self.random_sleep_length(0,1)
+        self.mouse.move_to(self.win.inventory_slots[indices_grape[0]].random_point())
+        self.mouse.click()
+        self.random_sleep_length(1,3)
+        pag.hotkey('space')
+        
+        max_seconds_to_wait = 0
+        while wait_to_finish and not len(self.api_m.get_inv_item_indices(ids.JUG_OF_WATER)) == 0:
+            max_seconds_to_wait += 1
+            time.sleep(1)
+            if max_seconds_to_wait > 30:
+                break
 
         
     def fill_jugs_with_water(self):
