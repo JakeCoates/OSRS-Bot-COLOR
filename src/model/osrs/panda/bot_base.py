@@ -323,18 +323,18 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
             self.log_msg(f'Searching for {text}...')
             # If our mouse isn't hovering over the object, and we can't find another object...
             if not self.__move_mouse_to_nearest_marker(tile.Color, offset):
-                time.sleep(1)
+                time.sleep(self.random_sleep_length(1,2))
                 self.log_msg(f'failed to find {text}...')
                 continue
 
-            time.sleep(0.05)
+            time.sleep(self.random_sleep_length(0.05, 0.15))
             # Click if the mouseover text assures us we're clicking the object
             if not self.mouseover_text(contains=contains_word, color=contains_color):
                 self.log_msg(f'failed to find {text}...')
                 continue
             self.log_msg(f'{text} Clicked')
             self.mouse.click()
-            time.sleep(1)
+            time.sleep(self.random_sleep_length(1,2))
             player_pos = self.api_m.get_player_position()
             if player_pos[0] - tile.WorldPos[0] < 3 and player_pos[0] - tile.WorldPos[0] > -3:
             # Within +-3 of x
@@ -644,7 +644,7 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
                 if time.time() - wait_time > 20:
                     break
                 time.sleep(self.random_sleep_length(.8, 1.3))
-                
+
             self.log_msg("Selecting inventory...")
             self.mouse.move_to(self.win.cp_tabs[3].random_point())
             self.mouse.click()
