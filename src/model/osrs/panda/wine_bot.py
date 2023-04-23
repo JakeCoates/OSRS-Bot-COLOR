@@ -197,6 +197,7 @@ class PandaWine(PandasBaseBot):
         attempts = 0
         while self.api_m.get_player_position()[2] == 2:
             attempts += 1
+            self.log_msg(f'player is at position {self.api_m.get_player_position()[2]} attempting to go downstairs')
             self.attempt_to_click('top stairs', 'Climb', clr.OFF_WHITE, clr.CYAN, 7)
             if attempts >= 5:
                 break
@@ -206,8 +207,9 @@ class PandaWine(PandasBaseBot):
         # 1 = up
         # 2 = down
         attempts = 0
-        while self.api_m.get_player_position()[1] == 2:
+        while self.api_m.get_player_position()[2] == 1:
             attempts += 1
+            self.log_msg(f'player is at position {self.api_m.get_player_position()[2]} attempting to go {"Upstairs" if action == 1 else "Downstairs"}')
             self.attempt_to_click('middle stairs', 'Climb', clr.OFF_WHITE, clr.BLUE, 7)
             time.sleep(2)
             pag.hotkey(f'{action}')
@@ -217,7 +219,7 @@ class PandaWine(PandasBaseBot):
 
     def bottom_stairs_up(self):
         attempts = 0
-        while self.api_m.get_player_position()[0] == 2:
+        while self.api_m.get_player_position()[2] == 0:
             attempts += 1
             self.attempt_to_click('bottom stairs', 'Climb', clr.OFF_WHITE, clr.YELLOW, 7)
             if attempts >= 5:
