@@ -24,6 +24,8 @@ class PandaWine(PandasBaseBot):
         self.delay_min =0.37
         self.delay_max = .67
         self.wine_count = 100
+        self.wine_made = 0
+        self.bad_wine_made = 0
         # Setup API
         self.api_m = MorgHTTPSocket()
         self.api_s = StatusSocket()
@@ -46,11 +48,41 @@ class PandaWine(PandasBaseBot):
         self.log_msg(f"Bot will make {options['wine_count']} wines.")
         self.log_msg("Options set successfully.")
         self.options_set = True
+    
+    def inventory_announce(self):
+        GRAPES = len(self.api_m.get_inv_item_indices(ids.GRAPES))
+        EMPTY_JUGS = len(self.api_m.get_inv_item_indices(ids.EMPTY_JUG))
+        JUG = len(self.api_m.get_inv_item_indices(ids.JUG))
+        JUG_OF_WATER = len(self.api_m.get_inv_item_indices(ids.JUG_OF_WATER))
+        JUG_OF_WINE = len(self.api_m.get_inv_item_indices(ids.JUG_OF_WINE))
+        JUG_OF_BAD_WINE = len(self.api_m.get_inv_item_indices(ids.JUG_OF_BAD_WINE))
+        JUG_OF_BAD_WINE_1992 = len(self.api_m.get_inv_item_indices(ids.JUG_OF_BAD_WINE_1992))
+        self.log_msg(
+            f'Currently we have: \n'
+            f'{GRAPES} Grapes \n'
+            f'{EMPTY_JUGS} Empty Jugs \n'
+            f'{JUG} Jugs \n'
+            f'{JUG_OF_WATER} Jugs of water \n'
+            f'{JUG_OF_WINE} Jugs of wine \n'
+            f'{JUG_OF_BAD_WINE} Jugs of Bad win \n'
+            f'{JUG_OF_BAD_WINE_1992} Jugs of Bad win 1992?? \n'
+        )
+    
+    def wine_update(self):
+        self.wine_made += len(self.api_m.get_inv_item_indices(ids.JUG_OF_WINE))
+        self.bad_wine_made += len(self.api_m.get_inv_item_indices(ids.JUG_OF_BAD_WINE))
+        self.bad_wine_made += len(self.api_m.get_inv_item_indices(ids.JUG_OF_BAD_WINE_1992))
+        self.log_msg(
+            f'Wine totals: \n'
+            f'{self.wine_made} Good Wine! \n'
+            f'{self.bad_wine_made} Bad Wine! \n'
+        )
 
     def main_loop(self):
         # Setup variables
         self.setup()
 
+        jug_last = False
         while time.time() - self.start_time < self.end_time:
 
             runtime = int(time.time() - self.start_time)
@@ -60,12 +92,11 @@ class PandaWine(PandasBaseBot):
             deposit_slots = self.api_m.get_inv_item_first_indice(self.deposit_ids)
             self.roll_chance_passed = False
 
-            jugs = self.get_inv_items(ids.JUG_OF_WATER)
+            jugs = self.get_inv_items(ids.JUG)
             grapes = self.get_inv_items(ids.GRAPES)
-            self.log_msg(f'collected {len(jugs)} jugs, collected {len(grapes)} grapes')
-            jug_last = False
+            self.log_msg(f'collected {len(jugs)} jugs, collected {len(grapes)} grapes') 
 
-            if not self.api_m.get_is_inv_full():
+            if not self.api_m.get_is_inv_full() and self.count_made_wine() == 0:
                 if jug_last:
                     self.jug_loop()
                     self.grape_loop()
@@ -74,15 +105,20 @@ class PandaWine(PandasBaseBot):
                     self.grape_loop()
                     self.jug_loop()
                     jug_last = True
-
+                self.inventory_announce()
                 self.hop_world()
                 time.sleep(2)
             else:
-                self.get_downstairs()
-                self.make_wine()
+                self.inventory_announce()
+                if not self.api_m.get_player_position()[2] == 0: 
+                    self.get_downstairs()
+                if self.count_wine_materials() > 0:
+                    self.make_wine()
 
                 self.guild_door()
                 self.bank_walk(1)
+                self.inventory_announce()
+                self.wine_update()
                 self.bank_use()
                 self.bank_walk(-1)
                 self.guild_door()
@@ -91,6 +127,12 @@ class PandaWine(PandasBaseBot):
 
         self.update_progress(1)
         self.__logout("Finished.")
+
+    def count_made_wine(self):
+        return len(self.api_m.get_inv_item_indices([ids.JUG_OF_WINE, ids.JUG_OF_BAD_WINE, ids.JUG_OF_BAD_WINE_1992]))
+    
+    def count_wine_materials(self):
+        return len(self.api_m.get_inv_item_indices([ids.GRAPES, ids.JUG_OF_WATER]))
 
     def setup(self):
         """Sets up loop variables, checks for required items, and checks location.
@@ -118,10 +160,13 @@ class PandaWine(PandasBaseBot):
         time.sleep(2)
 
     def make_wine(self):
-        self.fill_jugs_with_water()
-        time.sleep(2)
-        self.merge_grapes_with_jug()
-        time.sleep(2)
+        if len(self.api_m.get_inv_item_indices([ids.JUG])) > 0:
+            self.fill_jugs_with_water()
+            time.sleep(2)
+        
+        if len(self.api_m.get_inv_item_indices([ids.JUG_OF_WATER])) > 0 and len(self.api_m.get_inv_item_indices([ids.GRAPES])):
+            self.merge_grapes_with_jug()
+            time.sleep(2)
 
     def bank_walk(self, direction):
         # 1 is towards bank -1 is away from bank
@@ -152,10 +197,10 @@ class PandaWine(PandasBaseBot):
 
         self.mouse.move_to(self.win.inventory_slots[indices_jug[0]].random_point())
         self.mouse.click()
-        self.random_sleep_length(0,1)
+        time.sleep(self.random_sleep_length(0,1))
         self.mouse.move_to(self.win.inventory_slots[indices_grape[0]].random_point())
         self.mouse.click()
-        self.random_sleep_length(1,3)
+        time.sleep(self.random_sleep_length(1,3))
         pag.hotkey('space')
         
         max_seconds_to_wait = 0
@@ -198,7 +243,9 @@ class PandaWine(PandasBaseBot):
         while self.api_m.get_player_position()[2] == 2:
             attempts += 1
             self.log_msg(f'player is at position {self.api_m.get_player_position()[2]} attempting to go downstairs')
-            self.attempt_to_click('top stairs', 'Climb', clr.OFF_WHITE, clr.CYAN, 7)
+            attempted_to_click = self.attempt_to_click('top stairs', 'Climb', clr.OFF_WHITE, clr.CYAN, 7)
+            if attempted_to_click:
+                time.sleep(self.random_sleep_length(1,3))
             if attempts >= 5:
                 break
 
@@ -210,7 +257,9 @@ class PandaWine(PandasBaseBot):
         while self.api_m.get_player_position()[2] == 1:
             attempts += 1
             self.log_msg(f'player is at position {self.api_m.get_player_position()[2]} attempting to go {"Upstairs" if action == 1 else "Downstairs"}')
-            self.attempt_to_click('middle stairs', 'Climb', clr.OFF_WHITE, clr.BLUE, 7)
+            attempted_to_click = self.attempt_to_click('middle stairs', 'Climb', clr.OFF_WHITE, clr.BLUE, 7)
+            if attempted_to_click:
+                time.sleep(self.random_sleep_length(1,3))
             time.sleep(2)
             pag.hotkey(f'{action}')
             time.sleep(2)
@@ -221,20 +270,27 @@ class PandaWine(PandasBaseBot):
         attempts = 0
         while self.api_m.get_player_position()[2] == 0:
             attempts += 1
-            self.attempt_to_click('bottom stairs', 'Climb', clr.OFF_WHITE, clr.YELLOW, 7)
+            attempted_to_click = self.attempt_to_click('bottom stairs', 'Climb', clr.OFF_WHITE, clr.YELLOW, 7)
+            if attempted_to_click:
+                time.sleep(self.random_sleep_length(1,3))
             if attempts >= 5:
                 break
 
     def jug_loop(self): 
         if self.api_m.get_is_inv_full():
             return
-        item_start_count = len(self.api_m.get_inv_item_indices(ids.EMPTY_JUG))
+        item_start_count = len(self.api_m.get_inv_item_indices(ids.JUG))
         attempts = 0
         
-        while len(self.api_m.get_inv_item_indices(ids.EMPTY_JUG)) == item_start_count:
+        while len(self.api_m.get_inv_item_indices(ids.JUG)) == item_start_count:
             attempts += 1
-            self.attempt_to_click('Jug', 'Jug', clr.OFF_ORANGE, clr.PURPLE, 7, (25, 0))
+            self.log_msg(f'jug attempt {attempts}')
+            attempted_to_click = self.attempt_to_click('Jug', 'Jug', clr.OFF_ORANGE, clr.PURPLE, 7, (25, 0))
+            if attempted_to_click:
+                time.sleep(self.random_sleep_length(1,3))
+                self.log_msg(f'initial jugs {item_start_count} new jug count {len(self.api_m.get_inv_item_indices(ids.JUG))}')
             if attempts >= 5:
+                self.log_msg(f'failed attempt')
                 break
 
     def grape_loop(self): 
@@ -245,6 +301,11 @@ class PandaWine(PandasBaseBot):
         
         while len(self.api_m.get_inv_item_indices(ids.GRAPES)) == item_start_count:
             attempts += 1
-            self.attempt_to_click('Grapes', 'Grapes', clr.OFF_ORANGE, clr.PINK, 7, (0, -25))
+            self.log_msg(f'grape attempt {attempts}')
+            attempted_to_click = self.attempt_to_click('Grapes', 'Grapes', clr.OFF_ORANGE, clr.PINK, 7, (0, -25))
+            self.log_msg(f'initial grapes {item_start_count} new grapes count {len(self.api_m.get_inv_item_indices(ids.GRAPES))}')
+            if attempted_to_click:
+                time.sleep(self.random_sleep_length(1,3))
             if attempts >= 5:
+                self.log_msg(f'failed attempt')
                 break

@@ -293,28 +293,31 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
 
     def attempt_to_click(self, text, contains_word, contains_color, marker_color, end_time=7, offset=(0,0)) -> bool:
         start_time = time.time()
+        result = False
         while time.time() - start_time < end_time:
             self.log_msg(f'Searching for {text}...')
             # If our mouse isn't hovering over the object, and we can't find another object...
             if not self.mouseover_text(contains=contains_word, color=contains_color) and not self.__move_mouse_to_nearest_marker(marker_color, offset):
-                time.sleep(1)
+                time.sleep(self.random_sleep_length(1,2))
                 self.log_msg(f'failed to find {text}...')
                 continue
 
-            time.sleep(0.05)
+            time.sleep(self.random_sleep_length(0.05,0.1))
             # Click if the mouseover text assures us we're clicking the object
             if not self.mouseover_text(contains=contains_word, color=contains_color):
                 self.log_msg(f'failed to find {text}...')
                 continue
             self.log_msg(f'{text} Clicked')
             self.mouse.click()
-            time.sleep(2)
+            time.sleep(self.random_sleep_length(1,2))
             # return true as it managed to click
-            return True
-        return False
+            result = True
+            break
+        return result
 
     def attempt_to_walk(self, text, contains_word, contains_color, tile: TileDetails, end_time=7, offset=(0,0)):
         start_time = time.time()
+        result = False
         while time.time() - start_time < end_time:
 
             self.log_msg(f'Searching for {text}...')
@@ -337,8 +340,9 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
             # Within +-3 of x
                 if player_pos[1] - tile.WorldPos[1] < 3 and player_pos[1] - tile.WorldPos[1] > -3:
                 # Within +-3 of y
-                    return True
-        return False
+                    result = True
+                    break
+        return result
 
     def choose_bank(self):
         """
