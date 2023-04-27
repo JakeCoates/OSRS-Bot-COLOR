@@ -415,6 +415,32 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
 
             search_tries += 1
 
+    def check_deposit_all(self):
+        """
+        This will check if deposit all png is found, and select all if not.
+        """
+        # get the path of deposit_all_grey.png and red
+        deposit_all_grey = self.PANDAS_IMAGES.joinpath("deposit_all_grey.png")
+        deposit_all_red = self.PANDAS_IMAGES.joinpath("deposit_all_red.png")
+
+        # if we find deposit all red in game view, return, else, find grey and click
+        time_searching = time.time()
+        while True:
+            if deposit_all_red_button := imsearch.search_img_in_rect(
+                deposit_all_red, self.win.game_view
+            ):
+                return   # We found deposit all is already selected, return.
+            # We now check several times within 1 second for deposit all grey, if we find it, click it and return.
+            elif deposit_all_grey_button := imsearch.search_img_in_rect(
+                deposit_all_grey, self.win.game_view
+            ):
+                self.mouse.move_to(deposit_all_grey_button.random_point())
+                self.mouse.click()
+                return
+            if time.time() - time_searching > 1:
+                self.log_msg("Could not verifty deposit all settings, double check those.")
+                return
+            time.sleep(.2)
 
     class StoppableThread(threading.Thread):
         """Thread class with a stop() method. The thread itself has to check.
@@ -479,10 +505,9 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
         return all_items_found
 
 
-
-    def deposit_items(self, slot_list):
+    def deposit_items(self, slot_list, deposit_ids):
         """
-        Clicks once on each unique item. 
+        Clicks once on each unique item to deposit all matching items in the inventory to the bank.
         Bank must be open already.
         Deposit "All" must be selected.
         Args:
@@ -490,21 +515,34 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
         Returns:
             None/Void
         """
-        try_count = 0
-
         if slot_list == -1:
+            # If there are no items to deposit, log a message and return early
             self.log_msg("No items to deposit, continuing...")
             return
-
-        if slot_list == 0:   # if theres only one item, it is the first slot
+        if slot_list == 0:
+            # If there's only one item, it is the first slot
             slot_list = [0]
+        # Loop until there are no more items in the inventory that match the deposit_ids
+        while self.api_m.get_inv_item_first_indice(deposit_ids) != -1:
+            # Move the mouse to each slot in the inventory and click to deposit all matching items
+            for slot in slot_list:
+                self.mouse.move_to(self.win.inventory_slots[slot].random_point(), mouseSpeed = "fast")
+                self.mouse.click()
+                time.sleep(self.random_sleep_length())
 
-        # move mouse each slot and click to deposit all
-        for slot in slot_list:
-            self.mouse.move_to(self.win.inventory_slots[slot].random_point())
-            self.mouse.click()
-
+        self.log_msg("Finished depositing items")
         return
+
+
+    def face_north(self):
+        """Faces the player north.
+            Args:
+                None
+            Returns:
+                None"""
+        # Move the mouse to the compass orb and click it to face north
+        self.mouse.move_to(self.win.compass_orb.random_point(), mouseSpeed = "fastest")
+        self.mouse.click()
     
     def is_hopping_worlds(self):
         """Makes sure we're currently hopping worlds
@@ -541,31 +579,6 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
             time.sleep(.1)
         return False   
     
-    def deposit_items(self, slot_list):
-        """
-        Clicks once on each unique item. 
-        Bank must be open already.
-        Deposit "All" must be selected.
-        Args:
-            slot_list: list of inventory slots to deposit items from
-        Returns:
-            None/Void
-        """
-        try_count = 0
-
-        if slot_list == -1:
-            self.log_msg("No items to deposit, continuing...")
-            return
-
-        if slot_list == 0:   # if theres only one item, it is the first slot
-            slot_list = [0]
-
-        # move mouse each slot and click to deposit all
-        for slot in slot_list:
-            self.mouse.move_to(self.win.inventory_slots[slot].random_point())
-            self.mouse.click()
-        return
-
     def choose_safety_square(self):
         """
         Choose one of the safe squares to click
@@ -631,7 +644,7 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
 
     def hop_world(self):
         if not self.api_m.get_is_inv_full():
-            pag.hotkey('ctrlleft', 'shift', 'right')
+            pag.hotkey('ctrl', 'shift', 'right')
             time.sleep(self.random_sleep_length(1.5,3))
             
             pag.hotkey('space')
