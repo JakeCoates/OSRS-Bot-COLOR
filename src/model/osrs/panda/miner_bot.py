@@ -235,14 +235,14 @@ class PandaMine(PandasBaseBot):
             else:
                 if int(time.time() - self.idle_time) > 2:
                     self.hop_world()
-                if int(time.time() - self.idle_time) > 10:
+                if int(time.time() - self.idle_time) > 32:
                     if self.get_nearest_tag(clr.CYAN):
                         self.mouse.move_to(self.get_nearest_tag(clr.CYAN).random_point())
                         self.mouse.click()
                     time.sleep(self.random_sleep_length())
-                if int(time.time() - self.idle_time) > 32:
-                    self.adjust_camera(clr.PINK, 1)
                 if int(time.time() - self.idle_time) > 60:
+                    self.adjust_camera(clr.PINK, 1)
+                if int(time.time() - self.idle_time) > 120:
                     self.log_msg("No Mining spot found in 60 seconds, quitting bot.")
                     self.stop()
             self.breaks_skipped = afk_time // 15
