@@ -16,7 +16,10 @@ from utilities.geometry import Point, RuneLiteObject
 import utilities.game_launcher as launcher
 import utilities.imagesearch as imsearch
 
-
+class OreType(Enum):
+    Coal = "Coal rocks"
+    Silver = "Silver rocks"
+    Iron = "Iron rocks"
 
 class PandaMine(PandasBaseBot):
     def __init__(self):
@@ -32,6 +35,8 @@ class PandaMine(PandasBaseBot):
         self.ores = ids.ores
         self.power_Mining = False
         self.Mining_tools = ids.pickaxes
+        self.bank_direction = "North"
+        self.ore_type = OreType.Coal.value
 
 
     def create_options(self):
@@ -43,6 +48,8 @@ class PandaMine(PandasBaseBot):
         """
         super().create_options()
         self.options_builder.add_checkbox_option("power_Mining", "Power Mining? Drops everything in inventory.", [" "])
+        self.options_builder.add_dropdown_option("bank_direction", "Bank Direction", ["North","East","South","West"])
+        self.options_builder.add_dropdown_option("ore_type", "Ore Type", [OreType.Coal.value, OreType.Silver.value, OreType.Iron.value])
 
     def save_options(self, options: dict):
         """
@@ -207,7 +214,6 @@ class PandaMine(PandasBaseBot):
 
         # check if the current animation is woodcutting
         return current_animation in Mining_animation_list
-        
 
     def go_mining(self):
         """
@@ -226,10 +232,10 @@ class PandaMine(PandasBaseBot):
             afk_time = int(time.time() - afk__start_time)
             if Mining_spot := self.get_nearest_tag(clr.PINK):
                 self.mouse.move_to(Mining_spot.random_point())
-                while not self.mouse.click(check_red_click=True):
+                while not self.mouseover_text(contains=self.ore_type, color=clr.OFF_CYAN) or not self.mouse.click(check_red_click=True):
                     if Mining_spot := self.get_nearest_tag(clr.PINK):
                         self.mouse.move_to(Mining_spot.random_point())
-                self.api_m.wait_til_gained_xp("Mining", timeout=20)
+                self.api_m.wait_til_gained_xp("Mining", timeout=20 * self.ore_difficulty_multiplier())
                 self.idle_time = time.time()
 
             else:
@@ -293,8 +299,8 @@ class PandaMine(PandasBaseBot):
             if color == clr.YELLOW:
                 if change_direction_img := imsearch.search_img_in_rect(self.PANDAS_IMAGES.joinpath("varrock_east_minimap.png"), self.win.minimap):
                     switch_direction = True
-            if time.time() - time_start > 120:
-                self.log_msg("We've been walking for 2 minutes, something is wrong...stopping.")
+            if time.time() - time_start > 240:
+                self.log_msg("We've been walking for 4 minutes, something is wrong...stopping.")
                 self.stop()
             if found := self.get_nearest_tag(color):
                 break
@@ -304,9 +310,7 @@ class PandaMine(PandasBaseBot):
                 return
             if len(shapes) > 1:
                 shapes_sorted = (
-                    sorted(shapes, key=RuneLiteObject.distance_from_top_center)
-                    if switch_direction == True
-                    else sorted(shapes, key=RuneLiteObject.distance_from_top_center)
+                    sorted(shapes, key=get_direction_point(self.bank_direction))
                 )
                 self.mouse.move_to(shapes_sorted[0 if direction == 1 else -1].random_point(), mouseSpeed = "fastest")                    
             else:
@@ -314,4 +318,22 @@ class PandaMine(PandasBaseBot):
             self.mouse.click()
             time.sleep(self.random_sleep_length(.35, .67))
         return
+    
+    def ore_difficulty_multiplier(self):
+        if(OreType(self.ore_type) == OreType.Iron):
+            return 1.5
+        if(OreType(self.ore_type) == OreType.Silver):
+            return 2
+        if(OreType(self.ore_type) == OreType.Coal):
+            return 4
         
+def get_direction_point(bank_direction):
+    if(bank_direction == "North"):
+        return RuneLiteObject.distance_from_top_center
+    if(bank_direction == "East"):
+        return RuneLiteObject.distance_from_rect_right
+    if(bank_direction == "South"):
+        return RuneLiteObject.distance_from_bottom_center
+    if(bank_direction == "West"):
+        return RuneLiteObject.distance_from_rect_left
+    

@@ -299,13 +299,13 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
             # If our mouse isn't hovering over the object, and we can't find another object...
             if not self.mouseover_text(contains=contains_word, color=contains_color) and not self.__move_mouse_to_nearest_marker(marker_color, offset):
                 time.sleep(self.random_sleep_length(1,2))
-                self.log_msg(f'failed to find {text}...')
+                self.log_msg(f'failed to find {contains_word}...')
                 continue
 
             time.sleep(self.random_sleep_length(0.05,0.1))
             # Click if the mouseover text assures us we're clicking the object
             if not self.mouseover_text(contains=contains_word, color=contains_color):
-                self.log_msg(f'failed to find {text}...')
+                self.log_msg(f'failed to find {contains_word}...')
                 continue
             self.log_msg(f'{text} Clicked')
             self.mouse.click()
@@ -374,20 +374,26 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
         """
         # move mouse one of the closes 2 banks
 
-        bank = self.choose_bank()
-
-        # move mouse to bank and click
-        self.mouse.move_to(bank.random_point())
-
-        self.mouse.click()
-
+        attempts = 0
         wait_time = time.time()
         while not self.is_bank_open():
-            # if we waited for 10 seconds, break out of loop
-            if time.time() - wait_time > 20:
-                self.log_msg("We clicked on the bank but player is not idle after 10 seconds, something is wrong, quitting bot.")
-                self.stop()
-            time.sleep(self.random_sleep_length(.8, 1.3))
+
+            if attempts > 5:
+                # if we waited for 10 seconds, break out of loop
+                if time.time() - wait_time > 40:
+                    self.log_msg("We clicked on the bank but player is not idle after 40 seconds, something is wrong, quitting bot.")
+                    self.stop()
+            else:
+                bank = self.choose_bank()
+
+                # move mouse to bank and click
+                self.mouse.move_to(bank.random_point())
+                while not self.mouseover_text(contains="Bank booth", color=clr.OFF_CYAN) or not self.mouse.click(check_red_click=True):
+                    if Mining_spot := self.get_nearest_tag(clr.YELLOW):
+                        self.mouse.move_to(Mining_spot.random_point())
+
+                time.sleep(self.random_sleep_length(1.8, 3.3))
+                attempts += 1
         return
 
     def check_text(self, object: RuneLiteObject, text):
@@ -691,7 +697,7 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
         if next_nearest:
             rand_point = table.random_point()
             point: Point = Point(rand_point.x + offset[0], rand_point.y + offset[1])
-            self.mouse.move_to(point, mouseSpeed="slow", knotsCount=5)
+            self.mouse.move_to(point, mouseSpeed="fastest", knotsCount=5)
         else:
             rand_point = table.random_point()
             point: Point = Point(rand_point.x + offset[0], rand_point.y + offset[1])

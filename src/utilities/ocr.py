@@ -97,7 +97,7 @@ def find_text(
             print(f"Font does not contain character: {char}. Omitting from search.")
             continue
         correlation = cv2.matchTemplate(image, template, cv2.TM_CCOEFF_NORMED)
-        y_mins, x_mins = np.where(correlation >= 0.98)
+        y_mins, x_mins = np.where(correlation >= 0.95)
         char_list.extend([char, x, y] for x, y in zip(x_mins, y_mins))
 
     # Sort the char list based on which ones appear closest to the top-left of the image
