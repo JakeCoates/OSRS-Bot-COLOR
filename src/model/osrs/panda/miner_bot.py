@@ -37,6 +37,7 @@ class PandaMine(PandasBaseBot):
         self.Mining_tools = ids.pickaxes
         self.bank_direction = "North"
         self.ore_type = OreType.Coal.value
+        self.camera_adjusted = False
 
 
     def create_options(self):
@@ -176,6 +177,7 @@ class PandaMine(PandasBaseBot):
         if not self.get_nearest_tag(clr.YELLOW) and not self.get_nearest_tag(clr.PINK) and not self.power_Mining:
             self.log_msg("Did not see a bank(YELLOW) or a Mining spot (PINK) on screen, make sure they are tagged.")
             self.adjust_camera(clr.YELLOW)
+            self.camera_adjusted = True
             self.stop()
         if not self.get_nearest_tag(clr.CYAN) and not self.power_Mining:
             self.log_msg("Did not see any tiles tagged CYAN, make sure they are tagged so I can find my way to the bank.")
@@ -231,7 +233,7 @@ class PandaMine(PandasBaseBot):
         """
         self.breaks_skipped = 0
         afk_time = 0
-        afk__start_time = time.time() 
+        afk__start_time = time.time()
 
         self.is_runelite_focused()   # check if runelite is focused
         if not self.is_focused:
@@ -257,6 +259,7 @@ class PandaMine(PandasBaseBot):
                     time.sleep(self.random_sleep_length())
                 if int(time.time() - self.idle_time) > 60:
                     self.adjust_camera(clr.PINK, 1)
+                    self.camera_adjusted = True
                 if int(time.time() - self.idle_time) > 120:
                     self.log_msg("No Mining spot found in 60 seconds, quitting bot.")
                     self.stop()
@@ -304,6 +307,9 @@ class PandaMine(PandasBaseBot):
         switch_direction = False
         time_start = time.time()
         while True:
+            if self.camera_adjusted:
+                self.face_north()
+                self.camera_adjusted = False
             # When walking to bank lets check if we need to switch directions so it's a smoother walk by checking the minimap
             if color == clr.YELLOW:
                 if change_direction_img := imsearch.search_img_in_rect(self.PANDAS_IMAGES.joinpath("varrock_east_minimap.png"), self.win.minimap):
