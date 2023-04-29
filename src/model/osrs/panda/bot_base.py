@@ -388,10 +388,18 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
 
                 # move mouse to bank and click
                 self.mouse.move_to(bank.random_point())
-                while not self.mouseover_text(contains="Bank booth", color=clr.OFF_CYAN) or not self.mouse.click(check_red_click=True):
+                time_trying = time.time()
+                while not self.mouseover_text(contains="Bank", color=clr.OFF_WHITE) or not self.mouse.click(check_red_click=True):
+                    if self.is_bank_open():
+                        break
                     if Mining_spot := self.get_nearest_tag(clr.YELLOW):
                         self.mouse.move_to(Mining_spot.random_point())
-
+                    if int(time.time() - time_trying) > 4:
+                        if Mining_spot := self.get_nearest_tag(clr.CYAN):
+                            self.mouse.move_to(Mining_spot.random_point())
+                            self.mouse.click()
+                            time_trying = time.time()
+                        
                 time.sleep(self.random_sleep_length(1.8, 3.3))
                 attempts += 1
         return
@@ -567,7 +575,7 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
 
     def close_bank(self):
         """Exits bank by sending escape key"""
-        pag.press("esc")
+        pag.press("esc", int(random.randint(2,4)), self.random_sleep_length(.1,1.4))
         return
 
     def is_bank_open(self):

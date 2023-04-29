@@ -163,6 +163,8 @@ class PandaMine(PandasBaseBot):
         self.idle_time = 0
         self.deposit_ids = self.ores
         self.deposit_ids.extend([ids.UNCUT_DIAMOND, ids.UNCUT_DRAGONSTONE, ids.UNCUT_EMERALD, ids.UNCUT_RUBY, ids.UNCUT_SAPPHIRE])
+        self.deposit_ids.extend([ids.COINS, ids.COINS_6964, ids.COINS_8890, ids.COINS_995])
+        self.deposit_ids.extend([ids.CLUE_GEODE_EASY, ids.CLUE_BOTTLE_BEGINNER, ids.CLUE_BOTTLE_MEDIUM, ids.CLUE_BOTTLE_HARD, ids.CLUE_BOTTLE_ELITE])
 
 
         # Setup Checks for pickaxes and tagged objects
@@ -215,6 +217,12 @@ class PandaMine(PandasBaseBot):
         # check if the current animation is woodcutting
         return current_animation in Mining_animation_list
 
+    def check_click_ore(self, time_started):
+        if int(time.time() - time_started) < 2:
+            return not self.mouseover_text(contains=self.ore_type, color=clr.OFF_CYAN) or not self.mouse.click(check_red_click=True)
+        else:
+            return self.mouseover_text(contains="Attack", color=clr.OFF_WHITE) or  self.mouseover_text(contains="Talk", color=clr.OFF_WHITE) or not self.mouse.click(check_red_click=True)
+
     def go_mining(self):
         """
         This will go Mining.
@@ -232,7 +240,8 @@ class PandaMine(PandasBaseBot):
             afk_time = int(time.time() - afk__start_time)
             if Mining_spot := self.get_nearest_tag(clr.PINK):
                 self.mouse.move_to(Mining_spot.random_point())
-                while not self.mouseover_text(contains=self.ore_type, color=clr.OFF_CYAN) or not self.mouse.click(check_red_click=True):
+                start_trying = time.time()
+                while self.check_click_ore(start_trying):
                     if Mining_spot := self.get_nearest_tag(clr.PINK):
                         self.mouse.move_to(Mining_spot.random_point())
                 self.api_m.wait_til_gained_xp("Mining", timeout=20 * self.ore_difficulty_multiplier())
