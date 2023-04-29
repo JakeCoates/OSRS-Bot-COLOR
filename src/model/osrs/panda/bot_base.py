@@ -588,7 +588,7 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
         end_time = time.time() + 3
 
         while (time.time() < end_time):
-            if deposit_btn := imsearch.search_img_in_rect(Desposit_all_img, self.win.game_view):
+            if deposit_btn := imsearch.search_img_in_rect(Desposit_all_img, self.win.game_view, 0.4):
                 return True
             time.sleep(.1)
         return False   
