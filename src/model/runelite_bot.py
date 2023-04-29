@@ -223,7 +223,7 @@ class RuneLiteBot(Bot, metaclass=ABCMeta):
             obj.set_rectangle_reference(rect)
         return objs
 
-    def get_nearest_tag(self, color: clr.Color) -> RuneLiteObject:
+    def get_nearest_tag(self, color: clr.Color, invert=False) -> RuneLiteObject:
         """
         Finds the nearest outlined object of a particular color within the game view and returns it as a RuneLiteObject.
         Args:
@@ -233,7 +233,7 @@ class RuneLiteBot(Bot, metaclass=ABCMeta):
         """
         if shapes := self.get_all_tagged_in_rect(self.win.game_view, color):
             shapes_sorted = sorted(shapes, key=RuneLiteObject.distance_from_rect_center)
-            return shapes_sorted[0]
+            return shapes_sorted[0 if not invert else -1]
         else:
             return None
 

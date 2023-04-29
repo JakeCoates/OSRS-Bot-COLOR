@@ -242,7 +242,7 @@ class PandaMine(PandasBaseBot):
                 self.mouse.move_to(Mining_spot.random_point())
                 start_trying = time.time()
                 while self.check_click_ore(start_trying):
-                    if Mining_spot := self.get_nearest_tag(clr.PINK):
+                    if Mining_spot := self.get_nearest_tag(clr.PINK, int(time.time() - start_trying) > 4):
                         self.mouse.move_to(Mining_spot.random_point())
                 self.api_m.wait_til_gained_xp("Mining", timeout=20 * self.ore_difficulty_multiplier())
                 self.idle_time = time.time()
