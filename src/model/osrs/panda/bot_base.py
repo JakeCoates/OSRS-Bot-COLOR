@@ -5,17 +5,20 @@ import random
 import threading
 import time
 from enum import Enum
+import cv2
+import numpy as np
 
 import pyautogui as pag
 import utilities.api.item_ids as ids
 import utilities.color as clr
+import utilities.ocr as ocr
 import utilities.game_launcher as launcher
 import utilities.random_util as rd
 from model.osrs.osrs_bot import OSRSBot
 from model.runelite_bot import BotStatus
 from utilities.api.morg_http_client import MorgHTTPSocket
 from utilities.api.status_socket import StatusSocket
-from utilities.geometry import Point, RuneLiteObject
+from utilities.geometry import Point, Rectangle, RuneLiteObject
 import utilities.imagesearch as imsearch
 
 class TileDetails():
@@ -41,7 +44,7 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
         self.take_breaks = False
 
     def create_options(self):
-        self.options_builder.add_slider_option("running_time", "How long to run (minutes)?", 1, 500)
+        self.options_builder.add_slider_option("running_time", "How long to run (minutes)?", 5, 500)
         self.options_builder.add_checkbox_option("take_breaks", "Take breaks?", [" "])
         self.options_builder.add_slider_option("delay_min", "How long to take between actions (min) (MiliSeconds)?", 300,1200)
         self.options_builder.add_slider_option("delay_max", "How long to take between actions (max) (MiliSeconds)?", 350,1200)
@@ -537,7 +540,7 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
             # If there's only one item, it is the first slot
             slot_list = [0]
         # Loop until there are no more items in the inventory that match the deposit_ids
-        while self.api_m.get_inv_item_first_indice(deposit_ids) != -1:
+        while len(self.api_m.get_first_occurrence(deposit_ids)) != 0:
             # Move the mouse to each slot in the inventory and click to deposit all matching items
             for slot in slot_list:
                 self.mouse.move_to(self.win.inventory_slots[slot].random_point(), mouseSpeed = "fast")
@@ -588,7 +591,7 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
         end_time = time.time() + 3
 
         while (time.time() < end_time):
-            if deposit_btn := imsearch.search_img_in_rect(Desposit_all_img, self.win.game_view, 0.4):
+            if deposit_btn := imsearch.search_img_in_rect(Desposit_all_img, self.win.game_view):
                 return True
             time.sleep(.1)
         return False   
@@ -672,9 +675,13 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
                     break
                 time.sleep(self.random_sleep_length(.8, 1.3))
 
+            rand = random.randint(0, 100)
             self.log_msg("Selecting inventory...")
-            self.mouse.move_to(self.win.cp_tabs[3].random_point())
-            self.mouse.click()
+            if rand < 90:
+                pag.hotkey('esc')
+            else:
+                self.mouse.move_to(self.win.cp_tabs[3].random_point())
+                self.mouse.click()
 
 
     def __logout(self, msg):
@@ -711,3 +718,195 @@ class PandasBaseBot(OSRSBot, launcher.Launchable, metaclass=ABCMeta):
             point: Point = Point(rand_point.x + offset[0], rand_point.y + offset[1])
             self.mouse.move_to(point)
         return True
+    
+    def mouse_within_nearest(self, color, sleep=0.1, debug=False):
+        while True:
+            target = self.get_nearest_tag(color)
+            if target:
+                cursor_x, cursor_y = pag.position()
+                relative_cursor_x = cursor_x - self.win.game_view.left
+                relative_cursor_y = cursor_y - self.win.game_view.top
+
+                if target.__point_exists([relative_cursor_x, relative_cursor_y]):
+                    if debug:
+                        print("Cursor is within the bounds of target")
+                    return True
+                else:
+                    if debug:
+                        print(f"Cursor position relative to game_view: x={relative_cursor_x}, y={relative_cursor_y}")
+                        dimensions = (
+                            ("x_min", target._x_min),
+                            ("x_max", target._x_max),
+                            ("y_min", target._y_min),
+                            ("y_max", target._y_max),
+                        )
+                        print(f"Cursor is outside the bounds of target")
+                        for dimension, value in dimensions:
+                            print(f"{dimension}: {value}")
+                    return False
+            else:
+                if debug:
+                    print("No tagged objects of {color} found")
+            time.sleep(sleep)
+
+    def mouse_within_inventory_slot(self, sleep=0.1, debug=False):
+        while True:
+            cursor_x, cursor_y = pag.position()
+            for slot_index, slot in enumerate(self.win.inventory_slots):
+                relative_cursor_x = cursor_x - slot.left
+                relative_cursor_y = cursor_y - slot.top
+
+                if 0 <= relative_cursor_x <= slot.width and 0 <= relative_cursor_y <= slot.height:
+                    if debug:
+                        print(f"Cursor is within the bounds of inventory slot {slot_index}")
+                    return slot_index
+            if debug:
+                print("Cursor is outside the bounds of any inventory slot")
+            time.sleep(sleep)
+
+    def search_random_blue_pixel(self, rect: Union[Rectangle, np.ndarray]) -> Point:
+        """
+        Searches for a random blue pixel within a given rectangle.
+        The pixels are sorted by distance from the center of the image, and a random pixel is selected
+        from the 3rd to 10th furthest.
+        Args:
+            rect: The Rectangle to search in (can be a Rectangle or a matrix).
+        Returns:
+            A Point representing the coordinates of the random blue pixel, or None if no blue pixel is found.
+        """
+        if isinstance(rect, Rectangle):
+            image = rect.screenshot()
+        else:
+            image = rect
+
+        if isinstance(image, str) or isinstance(image, Path):
+            image = cv2.imread(str(image), cv2.IMREAD_UNCHANGED)
+
+        if len(image.shape) < 3 or image.shape[2] != 4:
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2BGRA)
+
+        blue_pixels = np.where((image[..., 2] == 0) & (image[..., 1] == 15) & (image[..., 0] == 255))
+        if len(blue_pixels[0]) == 0:
+            return None
+
+        center_x = image.shape[1] // 2
+        center_y = image.shape[0] // 2
+
+        distances = np.sqrt((blue_pixels[1] - center_x) ** 2 + (blue_pixels[0] - center_y) ** 2)
+        sorted_indices = np.argsort(distances)
+        sorted_distances = distances[sorted_indices]
+
+        # Select a random index from the 3rd to 10th furthest so we don't click the edge of the minimap or any of the orbs + adds some human-like clicks
+        random_index = np.random.randint(2, max(3, min(40, len(sorted_indices)/3)))
+        random_pixel_index = sorted_indices[-random_index]
+        random_blue_pixel_x = blue_pixels[1][random_pixel_index]
+        random_blue_pixel_y = blue_pixels[0][random_pixel_index]
+
+        if isinstance(rect, Rectangle):
+            random_blue_pixel_x += rect.left
+            random_blue_pixel_y += rect.top
+
+        return Point(random_blue_pixel_x, random_blue_pixel_y)
+    
+    def click_and_drag(self, direction: str, distance: int, x_var: int = 0, y_var: int = 0, **kwargs):
+        """
+        Performs a click and drag operation by pressing the mouse button, moving the cursor in the specified
+        direction for a certain distance, and releasing the mouse button.
+        Args:
+            direction: Direction of movement..
+            distance: Distance to move the cursor.
+            x_var: Maximum x distance (default 0).
+            y_var: Maximum y distance (default 0).
+        """
+        # Press mouse button
+        pag.mouseDown()
+
+        if direction == 'up':
+            x_offset, y_offset = 0, -distance
+        elif direction == 'down':
+            x_offset, y_offset = 0, distance
+        elif direction == 'left':
+            x_offset, y_offset = -distance, 0
+        elif direction == 'right':
+            x_offset, y_offset = distance, 0
+        elif direction == 'up-left':
+            x_offset, y_offset = -distance, -distance
+        elif direction == 'up-right':
+            x_offset, y_offset = distance, -distance
+        elif direction == 'down-left':
+            x_offset, y_offset = -distance, distance
+        elif direction == 'down-right':
+            x_offset, y_offset = distance, distance
+        else:
+            raise ValueError("Invalid direction. Please choose a valid direction: "
+                             "'up', 'down', 'left', 'right', 'up-left', 'up-right', 'down-left', 'down-right'.")
+
+        # Add variance to the offsets
+        if x_var != 0:
+            x_offset += round(rd.truncated_normal_sample(-x_var, x_var))
+        if y_var != 0:
+            y_offset += round(rd.truncated_normal_sample(-y_var, y_var))
+
+        # Move the cursor relative to the current position
+        self.move_rel(x_offset, y_offset, **kwargs)
+
+        # Release mouse button
+        pag.mouseUp()
+
+    def set_target(self):
+        if self.clear_target():
+            self.mouse.right_click()
+        if take_text := ocr.find_text(
+            "Set",
+            self.win.game_view,
+            ocr.BOLD_12,
+            [clr.WHITE, clr.PURPLE, clr.ORANGE],
+        ):
+            self.mouse.move_to(take_text[0].random_point(), mouseSpeed="medium")
+            self.mouse.click()
+            self.log_msg(f"Target set!.")
+            for i in range(random.randint(1,3)):
+                pag.hotkey('esc')
+            time.sleep(self.random_sleep_length(.8, 1.2))
+            return True
+        else:
+            self.log_msg(f"Could not find 'Set' in right-click menu.")
+            return False
+        
+    def clear_target(self):
+        if take_text := ocr.find_text(
+            "Clear",
+            self.win.game_view,
+            ocr.BOLD_12,
+            [clr.WHITE, clr.PURPLE, clr.ORANGE],
+        ):
+            self.mouse.move_to(take_text[0].random_point(), mouseSpeed="medium")
+            self.mouse.click()
+            self.log_msg(f"Target cleared!.")
+            pag.hotkey('esc')
+            time.sleep(self.random_sleep_length(.8, 2.2))
+            return True
+        else:
+            self.log_msg(f"Could not find 'clear' in right-click menu.")
+            return False
+        
+    def go_to_map_image(self, map_image: str):
+        map_location = imsearch.search_img_in_rect(self.PANDAS_IMAGES.joinpath(map_image), self.win.game_view)
+        if map_location:
+            self.mouse.move_to(map_location.random_point(), mouseSpeed="medium")
+            time.sleep(self.random_sleep_length(.1, 1.2))
+            self.mouse.right_click()
+            time.sleep(self.random_sleep_length(.1, .5))
+            target_set = self.set_target()
+            time.sleep(self.random_sleep_length(.1, .5))
+            fail_count = 3
+            while True: 
+                try: 
+                    furthest_blue = self.search_random_blue_pixel(self.win.minimap)
+                    self.mouse.move_to(furthest_blue, mouseSpeed="medium")
+                    self.mouse.click()
+                    time.sleep(self.random_sleep_length(.1, .5))
+                except:
+                    fail_count = fail_count - 1
+                    if fail_count <= 0:
+                        return True
