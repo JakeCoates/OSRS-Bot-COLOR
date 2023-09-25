@@ -6,6 +6,7 @@ import pyautogui as pag
 from model.osrs.panda.bot_base import PandasBaseBot, WalkTiles
 import utilities.api.item_ids as ids
 import utilities.color as clr
+import utilities.ocr as ocr
 import utilities.random_util as rd
 from model.osrs.osrs_bot import OSRSBot
 from model.runelite_bot import BotStatus
@@ -21,23 +22,13 @@ class OreType(Enum):
     Silver = "Silver rocks"
     Iron = "Iron rocks"
 
-class PandaMine(PandasBaseBot):
+class PandaTravel(PandasBaseBot):
     def __init__(self):
-        bot_title = "Panda Mining"
+        bot_title = "Panda Travel"
         description = """Mines at supported locations."""
         super().__init__(bot_title=bot_title, description=description)
+        self.options_set = True
         # Set option variables below (initial value is only used during UI-less testing)
-        self.running_time = 200
-        self.take_breaks = True
-        self.afk_train = True
-        self.delay_min = 1.37
-        self.delay_max = 1.67
-        self.ores = ids.ores
-        self.power_Mining = False
-        self.Mining_tools = ids.pickaxes
-        self.bank_direction = "North"
-        self.ore_type = OreType.Coal.value
-        self.camera_adjusted = False
 
 
     def create_options(self):
@@ -48,9 +39,6 @@ class PandaMine(PandasBaseBot):
         unpack the dictionary of options after the user has selected them.
         """
         super().create_options()
-        self.options_builder.add_checkbox_option("power_Mining", "Power Mining? Drops everything in inventory.", [" "])
-        self.options_builder.add_dropdown_option("bank_direction", "Bank Direction", ["North","East","South","West"])
-        self.options_builder.add_dropdown_option("ore_type", "Ore Type", [OreType.Coal.value, OreType.Silver.value, OreType.Iron.value])
 
     def save_options(self, options: dict):
         """
@@ -59,20 +47,7 @@ class PandaMine(PandasBaseBot):
         False.
         """
         super().save_options(options)
-        for option in options:
-            if option == "power_Mining":
-                self.power_Mining = options[option] != []
-            if option == "ore_type":
-                self.ore_type = options[option]
-            else:
-                self.log_msg(f"Unexpected option: {option}")
 
-        self.log_msg(f"Running time: {self.running_time} minutes.")
-        self.log_msg(f"Bot will{'' if self.take_breaks else ' not'} take breaks.")
-        self.log_msg(f"Bot will{'' if self.afk_train else ' not'} train like you're afk on another tab.")
-        self.log_msg(f"Bot will wait between {self.delay_min} and {self.delay_max} seconds between actions.")
-        self.log_msg(f"Bot will{'' if self.power_Mining else ' not'} power mine.")
-        self.log_msg("Options set successfully.")
         self.options_set = True
 
 
@@ -104,27 +79,40 @@ class PandaMine(PandasBaseBot):
             minutes_since_last_break = int((time.time() - self.last_break) / 60)
             seconds = int(time.time() - self.last_break) % 60
             percentage = (self.multiplier * .01)  # this is the percentage chance of a break
-            deposit_slots = self.api_m.get_first_occurrence(self.deposit_ids)
-            self.roll_chance_passed = False
 
             try:
-                while not self.api_m.get_is_inv_full():
-                    if self.api_m.get_run_energy() == 10000:
-                        self.mouse.move_to(self.win.run_orb.random_point())
+                # while True:
+                # world_map_button = imsearch.search_img_in_rect(self.PANDAS_IMAGES.joinpath("world_map.png"), self.win.minimap_area)
+                # # world_map_button not found means the map is likely already open
+                # if world_map_button:
+                #     self.mouse.move_to(world_map_button.random_point(), mouseSpeed="medium")
+                #     self.mouse.click()
+                #     time.sleep(self.random_sleep_length(.8, 2.2))
+
+                    try: 
+                        furthest_blue = self.search_random_blue_pixel(self.win.minimap)
+                        self.mouse.move_to(furthest_blue, mouseSpeed="medium")
                         self.mouse.click()
-                        time.sleep(self.random_sleep_length())
-                    if Mining_spot := self.get_nearest_tag(clr.PINK):
-                        self.go_mining()
-                        deposit_slots = self.api_m.get_first_occurrence(self.deposit_ids)
-                    else:
-                        self.go_to_mine()
+                        time.sleep(self.random_sleep_length(.1, .2))
+                    except:
+                        fail_count = fail_count - 1
+                        if fail_count <= 0:
+                            break
 
+                    # if target is not set
+                    # Open map
+                    # if inventory full image is bank else mine
+                    # find image of above clause
+                    # shift right click near enough
+                    # set target
+                    # exit map
+                    
+                    # if target is set
+                    # use script to run following the target
 
-                if not self.power_Mining:
-                    self.go_to_bank()
-                    
-                self.bank_or_drop(deposit_slots)
-                    
+                    # when close enough to target
+                    # shift right click
+                    # clear path
 
             except Exception as e:
                 self.log_msg(f"Exception: {e}")
@@ -147,31 +135,10 @@ class PandaMine(PandasBaseBot):
 
         self.update_progress(1)
         self.log_msg("Finished.")
-        self.logout()
+        # self.logout()
         self.stop()
-
-    def go_to_bank(self):
-        if found := self.get_nearest_tag(color=clr.YELLOW):
-            return
-        world_map_button = imsearch.search_img_in_rect(self.PANDAS_IMAGES.joinpath("world_map.png"), self.win.minimap_area)
-        # world_map_button not found means the map is likely already open
-        if world_map_button:
-            self.mouse.move_to(world_map_button.random_point(), mouseSpeed="medium")
-            self.mouse.click()
-            time.sleep(self.random_sleep_length(.8, 2.2))
-
-            self.go_to_map_image("varrock_west_bank.png")
     
-    def go_to_mine(self):
-        world_map_button = imsearch.search_img_in_rect(self.PANDAS_IMAGES.joinpath("world_map.png"), self.win.minimap_area)
-        # world_map_button not found means the map is likely already open
-        if world_map_button:
-            self.mouse.move_to(world_map_button.random_point(), mouseSpeed="medium")
-            self.mouse.click()
-            time.sleep(self.random_sleep_length(.8, 1.2))
-
-            self.go_to_map_image("varrock_west_mine.png")
-            
+    
     def setup(self):
         """Sets up loop variables, checks for required items, and checks location.
             This will ideally stop the bot from running if it's not setup correctly.
@@ -181,26 +148,7 @@ class PandaMine(PandasBaseBot):
             Returns:
                 None"""
         super().setup()
-        self.idle_time = 0
-        self.deposit_ids = self.ores
-        self.deposit_ids.extend([ids.UNCUT_DIAMOND, ids.UNCUT_DRAGONSTONE, ids.UNCUT_EMERALD, ids.UNCUT_RUBY, ids.UNCUT_SAPPHIRE])
-        self.deposit_ids.extend([ids.COINS, ids.COINS_6964, ids.COINS_8890, ids.COINS_995])
-        self.deposit_ids.extend([ids.CLUE_GEODE_EASY, ids.CLUE_BOTTLE_BEGINNER, ids.CLUE_BOTTLE_MEDIUM, ids.CLUE_BOTTLE_HARD, ids.CLUE_BOTTLE_ELITE])
 
-
-        # Setup Checks for pickaxes and tagged objects
-        self.check_equipment()
-
-        if not self.power_Mining:
-            self.face_north()
-
-        if not self.get_nearest_tag(clr.YELLOW) and not self.get_nearest_tag(clr.PINK) and not self.power_Mining:
-            self.log_msg("Did not see a bank(YELLOW) or a Mining spot (PINK) on screen, make sure they are tagged.")
-            self.adjust_camera(clr.YELLOW)
-            self.camera_adjusted = True
-            self.stop()
-        
-        self.check_bank_settings()
 
 
     def face_north(self):
@@ -237,7 +185,7 @@ class PandaMine(PandasBaseBot):
         return current_animation in Mining_animation_list
 
     def check_click_ore(self, time_started):
-        if int(time.time() - time_started) < self.random_sleep_length(.05, .1):
+        if int(time.time() - time_started) < 2:
             return not self.mouseover_text(contains=self.ore_type, color=clr.OFF_CYAN) or not self.mouse.click(check_red_click=True)
         else:
             return self.mouseover_text(contains="Attack", color=clr.OFF_WHITE) or  self.mouseover_text(contains="Talk", color=clr.OFF_WHITE) or not self.mouse.click(check_red_click=True)
@@ -257,21 +205,27 @@ class PandaMine(PandasBaseBot):
             self.log_msg("Runelite is not focused...")
         while not self.api_m.get_is_inv_full(): 
             afk_time = int(time.time() - afk__start_time)
-            if Mining_spot := self.get_nearest_tag(clr.PINK): 
+            if Mining_spot := self.get_nearest_tag(clr.PINK):
+                self.mouse.move_to(Mining_spot.random_point())
                 start_trying = time.time()
                 while self.check_click_ore(start_trying):
                     if Mining_spot := self.get_nearest_tag(clr.PINK, int(time.time() - start_trying) > 4):
-                        self.mouse.move_to(Mining_spot.random_point(), mouseSpeed="fastest")
-                self.api_m.wait_til_gained_xp("Mining", timeout=5 * self.ore_difficulty_multiplier())
+                        self.mouse.move_to(Mining_spot.random_point())
+                self.api_m.wait_til_gained_xp("Mining", timeout=20 * self.ore_difficulty_multiplier())
                 self.idle_time = time.time()
 
             else:
-                if int(time.time() - self.idle_time) > 3:
+                if int(time.time() - self.idle_time) > 2:
                     self.hop_world()
-                if int(time.time() - self.idle_time) > 120:
+                if int(time.time() - self.idle_time) > 32:
+                    if self.get_nearest_tag(clr.CYAN):
+                        self.mouse.move_to(self.get_nearest_tag(clr.CYAN).random_point())
+                        self.mouse.click()
+                    time.sleep(self.random_sleep_length())
+                if int(time.time() - self.idle_time) > 60:
                     self.adjust_camera(clr.PINK, 1)
                     self.camera_adjusted = True
-                if int(time.time() - self.idle_time) > 240:
+                if int(time.time() - self.idle_time) > 120:
                     self.log_msg("No Mining spot found in 60 seconds, quitting bot.")
                     self.stop()
             self.breaks_skipped = afk_time // 15
@@ -347,7 +301,7 @@ class PandaMine(PandasBaseBot):
     
     def ore_difficulty_multiplier(self):
         if(OreType(self.ore_type) == OreType.Iron):
-            return 1
+            return 1.5
         if(OreType(self.ore_type) == OreType.Silver):
             return 2
         if(OreType(self.ore_type) == OreType.Coal):

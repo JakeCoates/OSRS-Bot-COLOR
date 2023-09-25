@@ -87,7 +87,7 @@ class PandaWine(PandasBaseBot):
             minutes_since_last_break = int((time.time() - self.last_break) / 60)
             seconds = int(time.time() - self.last_break) % 60
             percentage = (self.multiplier * .01)  # this is the percentage chance of a break
-            deposit_slots = self.api_m.get_inv_item_first_indice(self.deposit_ids)
+            deposit_slots = self.api_m.get_first_occurrence(self.deposit_ids)
             self.roll_chance_passed = False
 
             jugs = self.get_inv_items(ids.JUG)
@@ -206,7 +206,7 @@ class PandaWine(PandasBaseBot):
     def bank_use(self):
         self.open_bank()
         time.sleep(self.random_sleep_length(1,2.5))
-        self.deposit_items(self.api_m.get_inv_item_first_indice([ids.JUG_OF_WINE, ids.JUG_OF_BAD_WINE, ids.JUG_OF_BAD_WINE_1992, ids.GRAPES]))
+        self.deposit_items(self.api_m.get_first_occurrence([ids.JUG_OF_WINE, ids.JUG_OF_BAD_WINE, ids.JUG_OF_BAD_WINE_1992, ids.GRAPES]))
         time.sleep(self.random_sleep_length(1,2.5))
         pag.hotkey('esc')
         time.sleep(self.random_sleep_length(1,2.5))
