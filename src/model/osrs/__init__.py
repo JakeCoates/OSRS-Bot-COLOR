@@ -4,3 +4,4 @@ from .panda.wine_bot import PandaWine
 from .panda.bot_base import PandasBaseBot
 from .panda.miner_bot import PandaMine
 from .panda.travel_bot import PandaTravel
+from .panda.agility_bot import Pandagility
